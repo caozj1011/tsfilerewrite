@@ -15,6 +15,8 @@ public class Config {
 
   private String[] sourceDirPathList;
 
+  private String rewriteDirPath;
+
   private String loadDirPath;
 
   private String targetIoTDBHost = "127.0.0.1";
@@ -46,6 +48,7 @@ public class Config {
 
   private void loadProperties(Properties properties) {
     sourceDirPathList = properties.getProperty("source_dir").split(",");
+    rewriteDirPath = properties.getProperty("rewrite_dir");
     loadDirPath = properties.getProperty("load_dir");
 
     this.targetIoTDBHost = properties.getProperty("target_iotdb_host");
@@ -56,6 +59,10 @@ public class Config {
 
   public String[] getSourceDirPathList() {
     return sourceDirPathList;
+  }
+
+  public String getRewriteDirPath() {
+    return rewriteDirPath;
   }
 
   public String getLoadDirPath() {
