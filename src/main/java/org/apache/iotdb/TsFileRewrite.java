@@ -1,5 +1,7 @@
 package org.apache.iotdb;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -12,7 +14,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -37,8 +38,10 @@ public class TsFileRewrite {
     System.out.println(TsFileRewrite.class.getResource(""));
     TsFileRewrite tsFileRewrite =
         new TsFileRewrite(
-            "/Users/caozhijia/Desktop/timecho/code/tsfilerewrite/src/main/resources/1680079253926-7-0-25.tsfile",
-            "/Users/caozhijia/Desktop/timecho/code/tsfilerewrite/src/main/resources/out.tsfile");
+            new File(
+                "/Users/caozhijia/Desktop/timecho/code/tsfilerewrite/src/main/resources/1680079253926-7-0-25.tsfile"),
+            new File(
+                "/Users/caozhijia/Desktop/timecho/code/tsfilerewrite/src/main/resources/out1.tsfile"));
     tsFileRewrite.parseAndRewriteFile();
     System.out.println(tsFileRewrite.groupCount);
   }
@@ -54,8 +57,8 @@ public class TsFileRewrite {
   protected TsFileSequenceReader reader;
 
   protected TsFileIOWriter tsFileIOWriter;
-  protected String oldTsFile;
-  protected String newTsFile;
+  protected File oldTsFile;
+  protected File newTsFile;
   protected Decoder defaultTimeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -70,23 +73,22 @@ public class TsFileRewrite {
 
   protected int groupCount = 0;
 
-  public TsFileRewrite(String oldTsFile, String newTsFile) throws IOException {
-    this.reader = new TsFileSequenceReader(oldTsFile);
+  public TsFileRewrite(File oldTsFile, File newTsFile) throws IOException {
+    this.reader = new TsFileSequenceReader(oldTsFile.getAbsolutePath());
     this.oldTsFile = oldTsFile;
     this.newTsFile = newTsFile;
     initTsFileIOWriter();
   }
 
   public void initTsFileIOWriter() throws IOException {
-    File newFile = FSFactoryProducer.getFSFactory().getFile(newTsFile);
-    if (newFile.exists()) {
-      System.out.println("delete uncomplated file " + newFile);
-      Files.delete(newFile.toPath());
+    if (newTsFile.exists()) {
+      System.out.println("delete uncomplated file " + newTsFile);
+      Files.delete(newTsFile.toPath());
     }
-    if (!newFile.createNewFile()) {
-      System.out.println("Create new TsFile {} failed because it exists" + newFile);
+    if (!newTsFile.createNewFile()) {
+      System.out.println("Create new TsFile {} failed because it exists" + newTsFile);
     }
-    this.tsFileIOWriter = new TsFileIOWriter(newFile);
+    this.tsFileIOWriter = new TsFileIOWriter(newTsFile);
   }
 
   public void parseAndRewriteFile() throws IOException, WriteProcessException {
@@ -103,7 +105,6 @@ public class TsFileRewrite {
     boolean firstChunkInChunkGroup = true;
 
     try {
-      boolean isChange = false;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_GROUP_HEADER:
@@ -111,9 +112,7 @@ public class TsFileRewrite {
             deviceId = chunkGroupHeader.getDeviceID();
             firstChunkInChunkGroup = true;
             endChunkGroup();
-            if (deviceId.contains("434450E02")) {
-              System.out.println(deviceId);
-            }
+
             if (strings.contains(deviceId.substring(0, 15))) {
               deviceId = PathUtil.transformPath(deviceId, 3);
             } else {
@@ -139,23 +138,21 @@ public class TsFileRewrite {
 
             String measurementID = header.getMeasurementID();
             measurementID = measurementID.replace("\"", "`");
-            if (deviceId.contains("434450E02") && measurementID.contains("R2_WRB")) {
-              System.out.println(deviceId);
-            }
 
             if (deviceId.length() > 100) {
               System.out.println(deviceId);
             }
+            PartialPath partialPath = new PartialPath(deviceId, measurementID);
             MeasurementSchema measurementSchema =
                 new MeasurementSchema(
-                    measurementID,
+                    partialPath.getMeasurement(),
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType());
 
             //                        deviceId = "root.db.newdevice";
             reWriteChunk(
-                deviceId,
+                partialPath.getDevice(),
                 firstChunkInChunkGroup,
                 measurementSchema,
                 pageHeadersInChunk,
@@ -192,6 +189,8 @@ public class TsFileRewrite {
               + reader.position()
               + "because: "
               + e2.getMessage());
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
     } finally {
       if (reader != null) {
         reader.close();

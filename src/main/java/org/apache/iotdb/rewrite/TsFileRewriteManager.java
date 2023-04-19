@@ -1,5 +1,7 @@
 package org.apache.iotdb.rewrite;
 
+import org.apache.iotdb.TsFileRewrite;
+
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,7 +31,14 @@ public class TsFileRewriteManager {
   }
 
   public Future<?> submitTsFileRewriteTask(File sourceTsFile, File rewriteDir) {
-    return executorService.submit(() -> rewriteTsFile(sourceTsFile, rewriteDir));
+    return executorService.submit(
+        () -> {
+          try {
+            new TsFileRewrite(sourceTsFile, rewriteDir).parseAndRewriteFile();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   private void rewriteTsFile(File sourceTsFile, File rewriteDir) {}
