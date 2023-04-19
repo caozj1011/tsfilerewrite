@@ -52,6 +52,8 @@ public class TsFileTransportManager {
     }
     tsFileTransporter.upLoadFile(remoteDirPath, sourceDir + File.separator + sourceTsFileName);
     returnTsFileTransporter(tsFileTransporter);
+    File sourceTsFile = new File(sourceDir + File.separator + sourceTsFileName);
+    sourceTsFile.delete();
   }
 
   private synchronized TsFileTransporter borrowTsFileTransporter() {

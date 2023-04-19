@@ -155,7 +155,7 @@ public class VSGProcessor {
       if (loadIndex < transportIndex) {
         loadFuture =
             tsFileLoadManager.submitTsFileLoadTask(
-                vsgRewriteDirPath, tsFileList.get(loadIndex).getName(), vsgLoadDirPath);
+                tsFileList.get(loadIndex).getName(), vsgLoadDirPath);
       }
     }
   }

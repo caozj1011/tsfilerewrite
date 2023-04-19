@@ -33,7 +33,12 @@ public class Main {
         config.getTargetServerUser(),
         config.getTargetServerPwd());
     TsFileLoadManager tsFileLoadManager = new TsFileLoadManager();
-    tsFileLoadManager.init(VSG_NUM);
+    tsFileLoadManager.init(
+        VSG_NUM,
+        config.getTargetIoTDBHost(),
+        config.getTargetIoTDBPort(),
+        config.getTargetIoTDBUser(),
+        config.getTargetIoTDBPwd());
 
     ExecutorService executorService = Executors.newFixedThreadPool(VSG_NUM);
     for (int k = 0; k < VSG_NUM; k++) {
