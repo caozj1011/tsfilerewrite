@@ -1,6 +1,11 @@
 package org.apache.iotdb.transport;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class TsFileTransporter {
+
+  private static Lock lock = new ReentrantLock();
 
   private SftpUtil sftpUtil;
 
@@ -27,6 +32,14 @@ public class TsFileTransporter {
   }
 
   public void upLoadFile(String remoteDirPath, String sourceTsFilePath) {
+    if (!sftpUtil.isDirExist(remoteDirPath)) {
+      lock.lock();
+      try {
+        sftpUtil.createDir(remoteDirPath);
+      } finally {
+        lock.unlock();
+      }
+    }
     sftpUtil.upload(remoteDirPath, sourceTsFilePath);
   }
 }
