@@ -145,6 +145,7 @@ public class VSGProcessor {
       if (loadFuture != null) {
         try {
           loadFuture.get();
+          tsFileList.get(loadIndex).delete();
           loadIndex++;
           loadFuture = null;
         } catch (InterruptedException | ExecutionException e) {

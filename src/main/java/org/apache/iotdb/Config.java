@@ -24,6 +24,11 @@ public class Config {
   private String targetIoTDBUser = "root";
   private String targetIoTDBPwd = "root";
 
+  private String targetServerHost = "127.0.0.1";
+  private int targetServerPort = 6668;
+  private String targetServerUser = "root";
+  private String targetServerPwd = "root";
+
   public Config() {
     URL url = Main.class.getProtectionDomain().getCodeSource().getLocation();
     try {
@@ -55,6 +60,11 @@ public class Config {
     this.targetIoTDBPort = Integer.parseInt(properties.getProperty("target_iotdb_port"));
     this.targetIoTDBUser = properties.getProperty("target_iotdb_user");
     this.targetIoTDBPwd = properties.getProperty("target_iotdb_pwd");
+
+    this.targetServerHost = properties.getProperty("target_server_host");
+    this.targetServerPort = Integer.parseInt(properties.getProperty("target_server_port"));
+    this.targetServerUser = properties.getProperty("target_server_user");
+    this.targetServerPwd = properties.getProperty("target_server_pwd");
   }
 
   public String[] getSourceDirPathList() {
@@ -83,5 +93,21 @@ public class Config {
 
   public String getTargetIoTDBPwd() {
     return targetIoTDBPwd;
+  }
+
+  public String getTargetServerHost() {
+    return targetServerHost;
+  }
+
+  public int getTargetServerPort() {
+    return targetServerPort;
+  }
+
+  public String getTargetServerUser() {
+    return targetServerUser;
+  }
+
+  public String getTargetServerPwd() {
+    return targetServerPwd;
   }
 }

@@ -26,7 +26,12 @@ public class Main {
     TsFileRewriteManager tsFileRewriteManager = new TsFileRewriteManager();
     tsFileRewriteManager.init(VSG_NUM);
     TsFileTransportManager tsFileTransportManager = new TsFileTransportManager();
-    tsFileTransportManager.init(VSG_NUM);
+    tsFileTransportManager.init(
+        VSG_NUM,
+        config.getTargetServerHost(),
+        config.getTargetServerPort(),
+        config.getTargetServerUser(),
+        config.getTargetServerPwd());
     TsFileLoadManager tsFileLoadManager = new TsFileLoadManager();
     tsFileLoadManager.init(VSG_NUM);
 
@@ -56,6 +61,6 @@ public class Main {
 
     tsFileRewriteManager.clear();
     tsFileTransportManager.clear();
-    tsFileTransportManager.clear();
+    tsFileLoadManager.clear();
   }
 }
