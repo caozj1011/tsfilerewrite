@@ -16,6 +16,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -125,12 +126,19 @@ public class TsFileRewrite {
             TSDataType dataType = header.getDataType();
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
             List<ByteBuffer> dataInChunk = new ArrayList<>();
+            List<Boolean> needToDecodeInfo = new ArrayList<>();
+
             int dataSize = header.getDataSize();
             while (dataSize > 0) {
+
+
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              boolean needToDecode = pageHeader.getStatistics() == null;
+              needToDecodeInfo.add(needToDecode);
+
+              ByteBuffer pageData = needToDecode ? reader.readPage(pageHeader, header.getCompressionType()) : reader.readCompressedPage(pageHeader);
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
@@ -138,10 +146,6 @@ public class TsFileRewrite {
 
             String measurementID = header.getMeasurementID();
             measurementID = measurementID.replace("\"", "`");
-
-            if (deviceId.length() > 100) {
-              System.out.println(deviceId);
-            }
             PartialPath partialPath = new PartialPath(deviceId, measurementID);
             MeasurementSchema measurementSchema =
                 new MeasurementSchema(
@@ -150,13 +154,12 @@ public class TsFileRewrite {
                     header.getEncodingType(),
                     header.getCompressionType());
 
-            //                        deviceId = "root.db.newdevice";
             reWriteChunk(
                 partialPath.getDevice(),
                 firstChunkInChunkGroup,
                 measurementSchema,
                 pageHeadersInChunk,
-                dataInChunk);
+                dataInChunk,needToDecodeInfo);
             firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -172,7 +175,7 @@ public class TsFileRewrite {
               maxPlanIndex = tmpMaxPlanIndex;
             }
 
-            tsFileIOWriter.setMaxPlanIndex(tmpMinPlanIndex);
+            tsFileIOWriter.setMinPlanIndex(tmpMinPlanIndex);
             tsFileIOWriter.setMaxPlanIndex(tmpMaxPlanIndex);
             tsFileIOWriter.writePlanIndices();
             break;
@@ -203,12 +206,16 @@ public class TsFileRewrite {
       boolean firstChunkInChunkGroup,
       MeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
-      List<ByteBuffer> pageDataInChunk)
+      List<ByteBuffer> pageDataInChunk,List<Boolean> needToDecodeInfo)
       throws IOException, PageException {
     ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
     valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
     for (int i = 0; i < pageDataInChunk.size(); i++) {
-      decodeAndWritePage(deviceId, schema, pageDataInChunk.get(i), chunkWriter);
+      if (Boolean.TRUE.equals(needToDecodeInfo.get(i))) {
+        decodeAndWritePage(deviceId, schema, pageDataInChunk.get(i), chunkWriter);
+      }else {
+        chunkWriter.writePageHeaderAndDataIntoBuff(pageDataInChunk.get(i), pageHeadersInChunk.get(i));
+      }
     }
     if (firstChunkInChunkGroup || !tsFileIOWriter.isWritingChunkGroup()) {
       groupCount++;
